@@ -60,6 +60,43 @@ public class SignUploader extends Module {
         .build()
     );
 
+    private final Setting<Boolean> onlyWithinSpawn = sgGeneral.add(new BoolSetting.Builder()
+        .name("Spawn only")
+        .description("Only upload signs within spawn")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Integer> overworldSpawnRadius = sgGeneral.add(new IntSetting.Builder()
+        .name("overworld-radius")
+        .description("Distance from 0 0 in the overworld to upload from")
+        .defaultValue(Settings.defaultOverworldSpawnRadius)
+        .range(0, 30_000_000)
+        .sliderRange(0, 500_000)
+        .visible(onlyWithinSpawn::get)
+        .build()
+    );
+
+    private final Setting<Integer> netherSpawnRadius = sgGeneral.add(new IntSetting.Builder()
+        .name("nether-radius")
+        .description("Distance from 00 in the nether to upload from")
+        .defaultValue(Settings.defaultNetherSpawnRadius)
+        .range(0, 30_000_000)
+        .sliderRange(0, 500_000)
+        .visible(onlyWithinSpawn::get)
+        .build()
+    );
+
+    private final Setting<Integer> endSpawnRadius = sgGeneral.add(new IntSetting.Builder()
+        .name("end-radius")
+        .description("Distance from 00 in the end to upload from")
+        .defaultValue(Settings.defaultEndSpawnRadius)
+        .range(0, 30_000_000)
+        .sliderRange(0, 500_000)
+        .visible(onlyWithinSpawn::get)
+        .build()
+    );
+
     private final Setting<List<String>> excludedLocations = sgExclusions.add(new ExcludedLocationsSetting.Builder()
         .name("excluded-locations")
         .description(
@@ -287,6 +324,18 @@ public class SignUploader extends Module {
 
             BlockPos pos = signBlockEntity.getPos();
             if (Coordinates.isExcludedZone(exclusionZones, pos)) {
+                continue;
+            }
+
+            if (!Coordinates.isWithinSpawnRadius(
+                onlyWithinSpawn.get(),
+                dimension,
+                pos.getX(),
+                pos.getZ(),
+                overworldSpawnRadius.get(),
+                netherSpawnRadius.get(),
+                endSpawnRadius.get()
+            )) {
                 continue;
             }
 
