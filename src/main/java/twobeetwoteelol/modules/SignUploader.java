@@ -1,7 +1,5 @@
 package twobeetwoteelol.modules;
 
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.IntSetting;
@@ -15,7 +13,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.block.entity.SignText;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.WorldChunk;
 import twobeetwoteelol.Settings;
 import twobeetwoteelol.api.Api;
@@ -114,8 +111,6 @@ public class SignUploader extends Module {
     );
     private final Set<String> seenSigns = ConcurrentHashMap.newKeySet();
     private final ConcurrentMap<String, SignPayload> pendingSigns = new ConcurrentHashMap<>();
-    private final LongSet scannedLoadedChunks = new LongOpenHashSet();
-    private final LongSet visibleLoadedChunks = new LongOpenHashSet();
 
     private ExecutorService executor;
     private Future<?> running;
@@ -136,9 +131,8 @@ public class SignUploader extends Module {
     public void onActivate() {
         api.resetSession();
         nextUpload = 0L;
+        seenSigns.clear();
         pendingSigns.clear();
-        scannedLoadedChunks.clear();
-        visibleLoadedChunks.clear();
         cachedExcludedLocations = List.of();
         cachedExclusionZones = List.of();
         lastWorld = null;
@@ -149,8 +143,8 @@ public class SignUploader extends Module {
 
     @Override
     public void onDeactivate() {
-        scannedLoadedChunks.clear();
-        visibleLoadedChunks.clear();
+        seenSigns.clear();
+        pendingSigns.clear();
         lastWorld = null;
         shutdownExecutor();
     }
@@ -158,15 +152,11 @@ public class SignUploader extends Module {
     @EventHandler
     private void onTick(TickEvent.Post event) {
         if (mc.world == null || mc.player == null) {
-            scannedLoadedChunks.clear();
-            visibleLoadedChunks.clear();
             lastWorld = null;
             return;
         }
 
         if (mc.world != lastWorld) {
-            scannedLoadedChunks.clear();
-            visibleLoadedChunks.clear();
             lastWorld = mc.world;
         }
 
@@ -276,7 +266,6 @@ public class SignUploader extends Module {
         int playerChunkX = mc.player.getBlockPos().getX() >> 4;
         int playerChunkZ = mc.player.getBlockPos().getZ() >> 4;
 
-        visibleLoadedChunks.clear();
         for (int chunkX = playerChunkX - viewDistance; chunkX <= playerChunkX + viewDistance; chunkX++) {
             for (int chunkZ = playerChunkZ - viewDistance; chunkZ <= playerChunkZ + viewDistance; chunkZ++) {
                 WorldChunk chunk = mc.world.getChunkManager().getWorldChunk(chunkX, chunkZ, false);
@@ -284,17 +273,9 @@ public class SignUploader extends Module {
                     continue;
                 }
 
-                long chunkKey = ChunkPos.toLong(chunkX, chunkZ);
-                visibleLoadedChunks.add(chunkKey);
-                if (!scannedLoadedChunks.add(chunkKey)) {
-                    continue;
-                }
-
                 getChunkSigns(chunk, dimension, exclusionZones);
             }
         }
-
-        scannedLoadedChunks.retainAll(visibleLoadedChunks);
     }
 
     private List<ExclusionZone> getExclusionZones() {
