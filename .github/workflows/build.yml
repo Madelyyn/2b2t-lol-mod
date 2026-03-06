@@ -50,12 +50,23 @@ jobs:
           files: |
             build/libs/*.jar
 
+
       - name: Discord notification
         uses: Ilshidur/action-discord@0.4.0
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_USERNAME: 2b2t.lol Releases
+          DISCORD_EMBEDS: >-
+            [
+              {
+                "title": "${{ steps.meta.outputs.name }}",
+                "url": "https://github.com/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.tag }}",
+                "description": ${{ toJson(steps.release_notes.outputs.body) }},
+                "color": CCCCFF,
+                "footer": {
+                  "text": "2b2t.lol Releases"
+                }
+              }
+            ]
         with:
-          args: |
-            A new mod version has been released.
-            Download: https://2b2t.lol/download
+          args: "New release published: ${{ steps.meta.outputs.tag }}"
