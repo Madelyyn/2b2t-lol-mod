@@ -105,7 +105,7 @@ jobs:
             exit 0
           fi
 
-          MESSAGE="$(printf 'A new mod version has been released.\nDownload: https://2b2t.lol/download\n\nChangelog:\n%s\n\n<@1479521239889477743>' "$CHANGELOG")"
+          MESSAGE="$(printf 'A new mod version has been released.\nDownload: https://2b2t.lol/download\n\nChangelog:\n%s\n\n<@&1479521239889477743>' "$CHANGELOG")"
 
           curl_args=(
             -fsSL
