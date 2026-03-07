@@ -28,18 +28,25 @@ jobs:
           distribution: 'temurin'
           java-version: 21
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build all supported versions
+        run: ./gradlew --no-daemon clean buildAll
 
-      - name: get download
-        id: download
+      - name: Collect release artifacts
+        id: artifacts
         run: |
-          JAR_FILE="$(ls -1 build/libs/*.jar | head -n 1)"
-          if [ -z "$JAR_FILE" ]; then
-            echo "No JAR artifact found in build/libs"
+          mapfile -t JARS < <(ls -1 build/libs/*-mc*.jar 2>/dev/null | sort -V)
+          if [ "${#JARS[@]}" -eq 0 ]; then
+            echo "No multi-version JAR artifacts found in build/libs"
             exit 1
           fi
-          echo "jar_file=$JAR_FILE" >> "$GITHUB_OUTPUT"
+
+          printf '%s\n' "${JARS[@]}" > release-jars.txt
+
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${JARS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build release metadata
         id: meta
@@ -60,9 +67,9 @@ jobs:
             RANGE="${GITHUB_SHA}"
           fi
 
-          CHANGELOG="$(git log --pretty=format:"- [\`%h\`] %s (https://github.com/${GITHUB_REPOSITORY}/commit/%H)" "${RANGE}")"
+          CHANGELOG="$(git log --pretty=format:"[%h] %s (https://github.com/${GITHUB_REPOSITORY}/commit/%H)" "${RANGE}")"
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="- [\`${GITHUB_SHA::7}\`] ${GITHUB_EVENT_NAME} (https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})"
+            CHANGELOG="[${GITHUB_SHA::7}] ${GITHUB_EVENT_NAME} (https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})"
           fi
 
           {
@@ -72,6 +79,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,18 +93,29 @@ jobs:
             ${{ steps.changelog.outputs.changelog }}
           prerelease: false
           make_latest: true
-          files: |
-            build/libs/*.jar
+          files: ${{ steps.artifacts.outputs.files }}
 
-      - name: Discord notification
-        uses: appleboy/discord-action@v1.2.0
-        with:
-          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
-          username: 2b2t.lol Releases
-          file: ${{ steps.download.outputs.jar_file }}
-          message: |
-            A new mod version has been released.
-            Download: https://2b2t.lol/download
+      - name: Discord notification (all jars)
+        if: ${{ secrets.DISCORD_WEBHOOK != '' }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+        run: |
+          MESSAGE="$(printf 'A new mod version has been released.\nDownload: https://2b2t.lol/download\n\nChangelog:\n%s\n\n<@1479521239889477743>' "$CHANGELOG")"
 
-            Changelog:
-            ${{ steps.changelog.outputs.changelog }}
+          curl_args=(
+            -fsSL
+            -X POST
+            "$DISCORD_WEBHOOK"
+            -F "username=2b2t.lol Releases"
+            -F "content=${MESSAGE}"
+          )
+
+          index=0
+          while IFS= read -r jar; do
+            [ -n "$jar" ] || continue
+            curl_args+=( -F "files[${index}]=@${jar}" )
+            index=$((index + 1))
+          done < release-jars.txt
+
+          curl "${curl_args[@]}"
