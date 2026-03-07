@@ -96,11 +96,15 @@ jobs:
           files: ${{ steps.artifacts.outputs.files }}
 
       - name: Discord notification (all jars)
-        if: ${{ secrets.DISCORD_WEBHOOK != '' }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK is not set; skipping Discord notification."
+            exit 0
+          fi
+
           MESSAGE="$(printf 'A new mod version has been released.\nDownload: https://2b2t.lol/download\n\nChangelog:\n%s\n\n<@1479521239889477743>' "$CHANGELOG")"
 
           curl_args=(
