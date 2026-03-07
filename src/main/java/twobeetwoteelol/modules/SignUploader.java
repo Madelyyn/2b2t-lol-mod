@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.gui.screen.ingame.AbstractSignEditScreen;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.block.entity.SignText;
@@ -153,6 +154,10 @@ public class SignUploader extends Module {
     private void onTick(TickEvent.Post event) {
         if (mc.world == null || mc.player == null) {
             lastWorld = null;
+            return;
+        }
+
+        if (mc.currentScreen instanceof AbstractSignEditScreen) {
             return;
         }
 
