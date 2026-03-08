@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screen.ingame.AbstractSignEditScreen;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.block.entity.SignText;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.WorldChunk;
 import twobeetwoteelol.Settings;
@@ -23,6 +24,7 @@ import twobeetwoteelol.model.MinecraftSessionData;
 import twobeetwoteelol.model.SignPayload;
 import twobeetwoteelol.settings.ExcludedLocationsSetting;
 import twobeetwoteelol.utils.Coordinates;
+import twobeetwoteelol.utils.Is2b2t;
 import twobeetwoteelol.utils.Messages;
 import twobeetwoteelol.utils.StringyStringz;
 
@@ -154,6 +156,11 @@ public class SignUploader extends Module {
     private void onTick(TickEvent.Post event) {
         if (mc.world == null || mc.player == null) {
             lastWorld = null;
+            return;
+        }
+
+        if (!Is2b2t.is2b2t(mc)) {
+            not2b2t();
             return;
         }
 
@@ -375,6 +382,14 @@ public class SignUploader extends Module {
                 info(message, args);
             }
         });
+    }
+
+    private void not2b2t() {
+        error("This module only works on 2b2t. (disabled)");
+        mc.inGameHud.setTitle(Text.literal("2b2t-lol disabled"));
+        mc.inGameHud.setSubtitle(Text.literal("You can only use this on 2b2t."));
+        mc.inGameHud.setTitleTicks(10, 80, 20);
+        toggle();
     }
 
     private record PendingSign(String seenHash, SignPayload payload) {

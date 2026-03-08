@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "twobeetwoteelol.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "TabAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
